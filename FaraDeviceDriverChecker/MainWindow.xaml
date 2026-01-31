@@ -6,7 +6,7 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:vm="clr-namespace:FaraDeviceDriverChecker.ViewModels"
         mc:Ignorable="d"
-        Title="FaraDeviceDriverChecker" Height="650" Width="950"
+        Title="FaraDeviceDriverChecker" Height="650" Width="1050"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource MaterialDesign.Brush.Background}"
         TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
@@ -30,9 +30,7 @@
             <Grid Margin="16">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
@@ -40,7 +38,6 @@
                 <materialDesign:Card Grid.Row="0" Padding="16" Margin="0,0,0,16">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
@@ -52,55 +49,77 @@
                                        VerticalAlignment="Center" Margin="12,0,0,0" />
                         </StackPanel>
 
-                        <StackPanel Grid.Column="2" Orientation="Horizontal">
-                            <ComboBox Width="180"
-                                      ItemsSource="{Binding Categories}"
-                                      SelectedItem="{Binding SelectedCategory}"
-                                      DisplayMemberPath="Name"
-                                      IsEnabled="{Binding IsNotLoading}"
-                                      materialDesign:HintAssist.Hint="カテゴリを選択"
-                                      Style="{StaticResource MaterialDesignOutlinedComboBox}" />
-                        </StackPanel>
+                        <Button Grid.Column="1" Command="{Binding OpenSettingsCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Cog" VerticalAlignment="Center" />
+                                <TextBlock Text="設定を開く" Margin="8,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </Grid>
                 </materialDesign:Card>
 
-                <!-- アクションボタン -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,16">
-                    <Button Command="{Binding ScanCommand}"
-                            Style="{StaticResource MaterialDesignRaisedButton}"
-                            Margin="0,0,8,0">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Magnify" VerticalAlignment="Center" />
-                            <TextBlock Text="スキャン" Margin="8,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding CheckUpdatesCommand}"
-                            Style="{StaticResource MaterialDesignRaisedSecondaryButton}"
-                            Margin="0,0,8,0">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Update" VerticalAlignment="Center" />
-                            <TextBlock Text="更新を確認" Margin="8,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding RunUpdateCommand}"
-                            Style="{StaticResource MaterialDesignRaisedDarkButton}"
-                            Margin="0,0,8,0">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Download" VerticalAlignment="Center" />
-                            <TextBlock Text="Windows Update実行" Margin="8,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding OpenSettingsCommand}"
-                            Style="{StaticResource MaterialDesignOutlinedButton}">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Cog" VerticalAlignment="Center" />
-                            <TextBlock Text="設定を開く" Margin="8,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                <!-- メインエリア -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
-                <!-- デバイス一覧 -->
-                <materialDesign:Card Grid.Row="2" Padding="0">
+                    <!-- カテゴリリスト -->
+                    <materialDesign:Card Grid.Column="0" Padding="8" Margin="0,0,16,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="カテゴリ" FontWeight="Bold" Margin="8,0,0,8" />
+
+                            <StackPanel Grid.Row="1">
+                                <CheckBox Content="すべて"
+                                          IsChecked="{Binding IsAllSelected}"
+                                          IsEnabled="{Binding IsNotLoading}"
+                                          Margin="0,4"
+                                          FontWeight="Bold"
+                                          Style="{StaticResource MaterialDesignCheckBox}" />
+                                <Separator Margin="0,4" />
+                                <ItemsControl ItemsSource="{Binding Categories}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Content="{Binding Name}"
+                                                      IsChecked="{Binding IsSelected}"
+                                                      IsEnabled="{Binding DataContext.IsNotLoading, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      Margin="0,4"
+                                                      Style="{StaticResource MaterialDesignCheckBox}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2" Margin="0,8,0,0">
+                                <Button Command="{Binding ScanCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Magnify" VerticalAlignment="Center" />
+                                        <TextBlock Text="スキャン" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding RunUpdateCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedDarkButton}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Download" VerticalAlignment="Center" />
+                                        <TextBlock Text="Updateを実行" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </materialDesign:Card>
+
+                    <!-- デバイス一覧 -->
+                    <materialDesign:Card Grid.Column="1" Padding="0">
                     <DataGrid ItemsSource="{Binding Devices}"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
@@ -110,7 +129,7 @@
                               GridLinesVisibility="Horizontal"
                               BorderThickness="0">
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="状態" Width="50">
+                            <DataGridTemplateColumn Header="状態" Width="70">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <materialDesign:PackIcon Width="24" Height="24" HorizontalAlignment="Center">
@@ -130,36 +149,48 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="デバイス名" Binding="{Binding Name}" Width="*" />
-                            <DataGridTextColumn Header="製造元" Binding="{Binding Manufacturer}" Width="120" />
-                            <DataGridTextColumn Header="クラス" Binding="{Binding Class}" Width="100" />
-                            <DataGridTextColumn Header="バージョン" Binding="{Binding DriverVersion}" Width="100" />
-                            <DataGridTextColumn Header="日付" Binding="{Binding DriverDate}" Width="90" />
-                            <DataGridTextColumn Header="詳細" Binding="{Binding StatusDisplay}" Width="180">
+                            <DataGridTextColumn Header="デバイス名" Binding="{Binding Name}" Width="*">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasProblem}" Value="True">
-                                                <Setter Property="Foreground" Value="Red" />
-                                                <Setter Property="FontWeight" Value="Bold" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="製造元" Binding="{Binding Manufacturer}" Width="150">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="クラス" Binding="{Binding Class}" Width="120">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="バージョン" Binding="{Binding DriverVersion}" Width="120">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="日付" Binding="{Binding DriverDate}" Width="120">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </materialDesign:Card>
-
-                <!-- 利用可能な更新 -->
-                <Expander Grid.Row="3" Header="利用可能なドライバー更新" Margin="0,16,0,0"
-                          Visibility="{Binding AvailableUpdates.Count, Converter={StaticResource BoolToVis}}"
-                          Background="{DynamicResource MaterialDesign.Brush.Card.Background}">
-                    <ListBox ItemsSource="{Binding AvailableUpdates}" MaxHeight="120" />
-                </Expander>
+                </Grid>
 
                 <!-- ステータスバー -->
-                <materialDesign:Card Grid.Row="4" Padding="12" Margin="0,16,0,0">
+                <materialDesign:Card Grid.Row="2" Padding="12" Margin="0,16,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />

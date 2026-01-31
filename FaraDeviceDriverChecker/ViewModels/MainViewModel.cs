@@ -3,6 +3,7 @@ namespace FaraDeviceDriverChecker.ViewModels;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Input;
 using Models;
 using Services;
@@ -10,20 +11,24 @@ using Services;
 public class MainViewModel : INotifyPropertyChanged
 {
     private readonly DeviceService _deviceService = new();
-    private DeviceCategory? _selectedCategory;
     private bool _isLoading;
+    private bool _hasScanned;
     private string _statusMessage = "デバイスカテゴリを選択してスキャンしてください";
 
     public ObservableCollection<DeviceCategory> Categories { get; } = new(DeviceCategory.GetAll());
     public ObservableCollection<DeviceInfo> Devices { get; } = [];
-    public ObservableCollection<string> AvailableUpdates { get; } = [];
 
-    public DeviceCategory? SelectedCategory
+    public bool HasSelectedCategories => Categories.Any(c => c.IsSelected);
+
+    public bool IsAllSelected
     {
-        get => _selectedCategory;
+        get => Categories.All(c => c.IsSelected);
         set
         {
-            _selectedCategory = value;
+            foreach (var category in Categories)
+            {
+                category.IsSelected = value;
+            }
             OnPropertyChanged();
         }
     }
@@ -41,6 +46,16 @@ public class MainViewModel : INotifyPropertyChanged
 
     public bool IsNotLoading => !IsLoading;
 
+    public bool HasScanned
+    {
+        get => _hasScanned;
+        private set
+        {
+            _hasScanned = value;
+            OnPropertyChanged();
+        }
+    }
+
     public string StatusMessage
     {
         get => _statusMessage;
@@ -51,22 +66,25 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public ICommand ScanCommand => new RelayCommand(async () => await ScanDevicesAsync(), () => IsNotLoading && SelectedCategory != null);
-    public ICommand CheckUpdatesCommand => new RelayCommand(async () => await CheckUpdatesAsync(), () => IsNotLoading);
-    public ICommand RunUpdateCommand => new RelayCommand(async () => await RunUpdateAsync(), () => IsNotLoading);
+    public ICommand ScanCommand => new RelayCommand(async () => await ScanDevicesAsync(), () => IsNotLoading && HasSelectedCategories);
+    public ICommand RunUpdateCommand => new RelayCommand(async () => await RunUpdateAsync(), () => IsNotLoading && HasScanned);
     public ICommand OpenSettingsCommand => new RelayCommand(() => _deviceService.OpenWindowsUpdateSettings());
 
     private async Task ScanDevicesAsync()
     {
-        if (SelectedCategory == null) return;
+        var selectedCategories = Categories.Where(c => c.IsSelected).ToList();
+        if (selectedCategories.Count == 0) return;
 
         IsLoading = true;
-        StatusMessage = $"{SelectedCategory.Name}デバイスをスキャン中...";
         Devices.Clear();
 
         try
         {
-            var devices = await Task.Run(() => _deviceService.GetDevices(SelectedCategory.Classes));
+            var allClasses = selectedCategories.SelectMany(c => c.Classes).ToArray();
+            var categoryNames = string.Join(", ", selectedCategories.Select(c => c.Name));
+            StatusMessage = $"{categoryNames}をスキャン中...";
+
+            var devices = await Task.Run(() => _deviceService.GetDevices(allClasses));
 
             foreach (var device in devices)
             {
@@ -74,36 +92,8 @@ public class MainViewModel : INotifyPropertyChanged
             }
 
             var problemCount = devices.Count(d => d.HasProblem);
-            StatusMessage = $"{devices.Count}個のデバイスが見つかりました。問題: {problemCount}個";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"エラー: {ex.Message}";
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    private async Task CheckUpdatesAsync()
-    {
-        IsLoading = true;
-        StatusMessage = "利用可能な更新を確認中...";
-        AvailableUpdates.Clear();
-
-        try
-        {
-            var updates = await Task.Run(() => _deviceService.GetAvailableDriverUpdates());
-
-            foreach (var update in updates)
-            {
-                AvailableUpdates.Add(update);
-            }
-
-            StatusMessage = updates.Count > 0
-                ? $"{updates.Count}件の更新が利用可能です"
-                : "利用可能な更新はありません";
+            StatusMessage = $"{devices.Count}個のデバイス / 問題: {problemCount}個";
+            HasScanned = true;
         }
         catch (Exception ex)
         {
@@ -118,16 +108,26 @@ public class MainViewModel : INotifyPropertyChanged
     private async Task RunUpdateAsync()
     {
         IsLoading = true;
-        StatusMessage = "Windows Updateを実行中...";
+        StatusMessage = "Updateを実行中...";
 
         try
         {
             var (success, message) = await _deviceService.RunWindowsUpdateAsync();
             StatusMessage = message;
+
+            if (success)
+            {
+                MessageBox.Show("Updateが完了しました", "完了", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show(message, "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         catch (Exception ex)
         {
             StatusMessage = $"エラー: {ex.Message}";
+            MessageBox.Show(ex.Message, "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {

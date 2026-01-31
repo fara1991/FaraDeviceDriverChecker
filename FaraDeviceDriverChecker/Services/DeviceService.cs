@@ -107,48 +107,6 @@ public class DeviceService
         return null;
     }
 
-    public List<string> GetAvailableDriverUpdates()
-    {
-        var updates = new List<string>();
-
-        try
-        {
-            var script = @"
-                $UpdateSession = New-Object -ComObject Microsoft.Update.Session
-                $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
-                $SearchResult = $UpdateSearcher.Search('IsInstalled=0 and Type=''Driver''')
-                foreach ($Update in $SearchResult.Updates) {
-                    Write-Output $Update.Title
-                }
-            ";
-
-            var processInfo = new ProcessStartInfo
-            {
-                FileName = "powershell",
-                Arguments = $"-ExecutionPolicy Bypass -Command \"{script}\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(processInfo);
-            if (process != null)
-            {
-                var output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit();
-
-                var lines = output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
-                updates.AddRange(lines);
-            }
-        }
-        catch
-        {
-            // エラー時は空リストを返す
-        }
-
-        return updates;
-    }
-
     public async Task<(bool success, string message)> RunWindowsUpdateAsync()
     {
         return await Task.Run(() =>
