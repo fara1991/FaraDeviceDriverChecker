@@ -1,6 +1,6 @@
-namespace FaraAudioDeviceChecker.Models;
+namespace FaraDeviceDriverChecker.Wpf.Models;
 
-public class AudioDeviceInfo
+public class DeviceInfo
 {
     public required string Name { get; set; }
     public required string DeviceId { get; set; }
@@ -14,4 +14,6 @@ public class AudioDeviceInfo
     public bool HasProblem { get; set; }
     public string ProblemCode { get; set; } = "正常";
     public string HardwareId { get; set; } = "不明";
+
+    public string StatusDisplay => HasProblem ? $"問題あり: {ProblemCode}" : "正常";
 }

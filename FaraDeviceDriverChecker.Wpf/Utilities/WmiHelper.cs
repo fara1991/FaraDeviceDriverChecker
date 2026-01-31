@@ -1,4 +1,4 @@
-namespace FaraAudioDeviceChecker.Utilities;
+namespace FaraDeviceDriverChecker.Wpf.Utilities;
 
 using System.Management;
 
@@ -22,7 +22,7 @@ public static class WmiHelper
             return input;
 
         return input
-            .Replace("\\", "\\\\") // バックスラッシュ（WQLでは\\でエスケープ）
-            .Replace("'", "''"); // シングルクォート
+            .Replace("\\", "\\\\")
+            .Replace("'", "''");
     }
 }

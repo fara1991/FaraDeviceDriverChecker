@@ -1,16 +1,15 @@
-namespace FaraAudioDeviceChecker.Services;
+namespace FaraDeviceDriverChecker.Wpf.Services;
 
 using System.Diagnostics;
 using System.Management;
 using Models;
 using Utilities;
 
-public class DeviceService : IDeviceService
+public class DeviceService
 {
-    public List<AudioDeviceInfo> GetDevices(string[] deviceClasses)
+    public List<DeviceInfo> GetDevices(string[] deviceClasses)
     {
-        var devices = new List<AudioDeviceInfo>();
-
+        var devices = new List<DeviceInfo>();
         var deviceIds = GetDeviceIdsByClasses(deviceClasses);
 
         foreach (var deviceId in deviceIds)
@@ -48,7 +47,6 @@ public class DeviceService : IDeviceService
                 var output = process.StandardOutput.ReadToEnd();
                 process.WaitForExit();
 
-                // "インスタンス ID:" または "Instance ID:" の行からデバイスIDを抽出
                 var lines = output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
                 foreach (var line in lines)
                 {
@@ -71,7 +69,7 @@ public class DeviceService : IDeviceService
         return deviceIds;
     }
 
-    private AudioDeviceInfo? GetDeviceInfoById(string deviceId)
+    private DeviceInfo? GetDeviceInfoById(string deviceId)
     {
         try
         {
@@ -84,7 +82,7 @@ public class DeviceService : IDeviceService
             foreach (var o in collection)
             {
                 var device = (ManagementObject)o;
-                var deviceInfo = new AudioDeviceInfo
+                var deviceInfo = new DeviceInfo
                 {
                     Name = WmiHelper.GetPropertyValue(device, "Name"),
                     DeviceId = WmiHelper.GetPropertyValue(device, "DeviceID"),
@@ -107,33 +105,6 @@ public class DeviceService : IDeviceService
         }
 
         return null;
-    }
-
-    public DeviceStatistics GetDeviceStatistics(List<AudioDeviceInfo> devices)
-    {
-        var statistics = new DeviceStatistics();
-
-        foreach (var device in devices)
-        {
-            var className = string.IsNullOrEmpty(device.Class) ? "不明" : device.Class;
-            if (!statistics.ClassCount.TryAdd(className, 1))
-                statistics.ClassCount[className]++;
-
-            var status = string.IsNullOrEmpty(device.Status) ? "不明" : device.Status;
-            if (!statistics.StatusCount.TryAdd(status, 1))
-                statistics.StatusCount[status]++;
-
-            var manufacturer = string.IsNullOrEmpty(device.Manufacturer) ? "不明" : device.Manufacturer;
-            if (!statistics.ManufacturerCount.TryAdd(manufacturer, 1))
-                statistics.ManufacturerCount[manufacturer]++;
-        }
-
-        return statistics;
-    }
-
-    public List<AudioDeviceInfo> GetProblemDevices(List<AudioDeviceInfo> devices)
-    {
-        return devices.FindAll(d => d.HasProblem || d.Status != "OK" || d.DriverVersion.StartsWith("取得エラー:"));
     }
 
     public List<string> GetAvailableDriverUpdates()
@@ -178,35 +149,13 @@ public class DeviceService : IDeviceService
         return updates;
     }
 
-    public bool ScanAndUpdateDrivers()
+    public async Task<(bool success, string message)> RunWindowsUpdateAsync()
     {
-        try
+        return await Task.Run(() =>
         {
-            var processInfo = new ProcessStartInfo
+            try
             {
-                FileName = "pnputil",
-                Arguments = "/scan-devices",
-                UseShellExecute = true,
-                Verb = "runas"
-            };
-
-            using var process = Process.Start(processInfo);
-            process?.WaitForExit();
-
-            return process?.ExitCode == 0;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    public (bool success, string message) RunWindowsUpdate()
-    {
-        try
-        {
-            // PowerShellでWindows Updateを実行
-            var script = @"
+                var script = @"
                 $UpdateSession = New-Object -ComObject Microsoft.Update.Session
                 $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
                 Write-Host 'ドライバー更新を検索中...'
@@ -243,84 +192,72 @@ public class DeviceService : IDeviceService
                 exit 0
             ";
 
-            var processInfo = new ProcessStartInfo
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell",
+                    Arguments = $"-ExecutionPolicy Bypass -Command \"{script.Replace("\"", "\\\"")}\"",
+                    UseShellExecute = true,
+                    Verb = "runas"
+                };
+
+                using var process = Process.Start(processInfo);
+                process?.WaitForExit();
+
+                return process?.ExitCode == 0
+                    ? (true, "Windows Updateが完了しました。")
+                    : (false, "Windows Updateの実行中にエラーが発生しました。");
+            }
+            catch (Exception ex)
             {
-                FileName = "powershell",
-                Arguments = $"-ExecutionPolicy Bypass -Command \"{script.Replace("\"", "\\\"")}\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = false,
-                Verb = "runas"
-            };
-
-            // 管理者権限で実行するため、UseShellExecute=trueに変更
-            processInfo.UseShellExecute = true;
-            processInfo.RedirectStandardOutput = false;
-            processInfo.RedirectStandardError = false;
-            processInfo.Verb = "runas";
-
-            using var process = Process.Start(processInfo);
-            process?.WaitForExit();
-
-            return process?.ExitCode == 0
-                ? (true, "Windows Updateが完了しました。")
-                : (false, "Windows Updateの実行中にエラーが発生しました。");
-        }
-        catch (Exception ex)
-        {
-            return (false, $"エラー: {ex.Message}");
-        }
+                return (false, $"エラー: {ex.Message}");
+            }
+        });
     }
 
     public void OpenWindowsUpdateSettings()
     {
         try
         {
-            // オプションの更新プログラム画面を開く
             var processInfo = new ProcessStartInfo
             {
                 FileName = "ms-settings:windowsupdate-optionalupdates",
                 UseShellExecute = true
             };
-
             Process.Start(processInfo);
         }
         catch
         {
-            // フォールバック: 通常のWindows Update画面を開く
             var processInfo = new ProcessStartInfo
             {
                 FileName = "ms-settings:windowsupdate",
                 UseShellExecute = true
             };
-
             Process.Start(processInfo);
         }
     }
 
-    private static void SetProblemCode(ManagementObject device, AudioDeviceInfo deviceInfo)
+    private static void SetProblemCode(ManagementObject device, DeviceInfo deviceInfo)
     {
         if (device["ConfigManagerErrorCode"] == null) return;
-        
-        var problemCode = (uint) device["ConfigManagerErrorCode"];
+
+        var problemCode = (uint)device["ConfigManagerErrorCode"];
         deviceInfo.HasProblem = problemCode != 0;
         deviceInfo.ProblemCode = ErrorCodeHelper.GetProblemDescription(problemCode);
     }
 
-    private static void GetDriverInfo(AudioDeviceInfo device)
+    private static void GetDriverInfo(DeviceInfo device)
     {
         try
         {
             var escapedDeviceId = WmiHelper.EscapeWqlString(device.DeviceId);
-
             var query = $"SELECT * FROM Win32_PnPSignedDriver WHERE DeviceID = '{escapedDeviceId}'";
+
             using var searcher = new ManagementObjectSearcher(query);
             var collection = searcher.Get();
 
             foreach (var o in collection)
             {
-                var driver = (ManagementObject) o;
+                var driver = (ManagementObject)o;
                 device.DriverVersion = driver["DriverVersion"]?.ToString() ?? "不明";
 
                 if (driver["DriverDate"] != null)
@@ -345,16 +282,17 @@ public class DeviceService : IDeviceService
         }
     }
 
-    private static void GetSystemDriverInfo(AudioDeviceInfo device)
+    private static void GetSystemDriverInfo(DeviceInfo device)
     {
         var escapedService = WmiHelper.EscapeWqlString(device.Service);
         var query = $"SELECT * FROM Win32_SystemDriver WHERE Name = '{escapedService}'";
+
         using var driverSearcher = new ManagementObjectSearcher(query);
         var driverCollection = driverSearcher.Get();
 
         foreach (var o in driverCollection)
         {
-            var driver = (ManagementObject) o;
+            var driver = (ManagementObject)o;
             device.DriverVersion = driver["Version"]?.ToString() ?? "不明";
 
             if (driver["InstallDate"] != null)
@@ -367,7 +305,7 @@ public class DeviceService : IDeviceService
         }
     }
 
-    private static List<AudioDeviceInfo> RemoveDuplicates(List<AudioDeviceInfo> devices)
+    private static List<DeviceInfo> RemoveDuplicates(List<DeviceInfo> devices)
     {
         var seenDeviceIds = new HashSet<string>();
         return devices.Where(device => seenDeviceIds.Add(device.DeviceId)).ToList();
