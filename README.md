@@ -112,7 +112,7 @@ dotnet restore
 dotnet build
 
 # リリースビルド (単一実行ファイル)
-dotnet publish FaraDeviceDriverChecker/FaraDeviceDriverChecker.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o ./publish
+dotnet publish FaraDeviceDriverChecker/FaraDeviceDriverChecker.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish
 ```
 
 ## サポート
