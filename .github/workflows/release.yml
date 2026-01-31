@@ -23,14 +23,14 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '9.0.x'
 
       - name: Restore dependencies
         run: dotnet restore
 
       - name: Build and Publish
         run: |
-          dotnet publish FaraAudioDeviceChecker/FaraAudioDeviceChecker.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o ./publish/win-x64
+          dotnet publish FaraDeviceDriverChecker.Wpf/FaraDeviceDriverChecker.Wpf.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o ./publish/win-x64
 
       - name: List files (debugging)
         run: |
@@ -39,25 +39,25 @@ jobs:
 
       - name: Create ZIP archive
         run: |
-          Compress-Archive -Path "./publish/win-x64/FaraAudioDeviceChecker.exe", "README.md" -DestinationPath "./FaraAudioDeviceChecker-${{ github.ref_name }}-win-x64.zip"
+          Compress-Archive -Path "./publish/win-x64/FaraDeviceDriverChecker.Wpf.exe", "README.md" -DestinationPath "./FaraDeviceDriverChecker-${{ github.ref_name }}-win-x64.zip"
         shell: pwsh
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ./FaraAudioDeviceChecker-${{ github.ref_name }}-win-x64.zip
+            ./FaraDeviceDriverChecker-${{ github.ref_name }}-win-x64.zip
           body: |
-            ## FaraAudioDeviceChecker ${{ github.ref_name }}
+            ## FaraDeviceDriverChecker ${{ github.ref_name }}
             
-            Windows用オーディオデバイス診断ツール
+            Windowsのデバイスドライバー状態診断・更新支援ツール
             
             ### ダウンロード
-            - **FaraAudioDeviceChecker-${{ github.ref_name }}-win-x64.zip**: Windows 64bit版
+            - **FaraDeviceDriverChecker-${{ github.ref_name }}-win-x64.zip**: Windows 64bit版
             
             ### 使用方法
             1. ZIPファイルをダウンロード・解凍
-            2. `FaraAudioDeviceChecker.exe` をダブルクリックで実行
+            2. `FaraDeviceDriverChecker.Wpf.exe` を実行
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
