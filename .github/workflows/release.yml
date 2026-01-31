@@ -39,7 +39,10 @@ jobs:
         run: |
           $tag = "${{ steps.set_tag.outputs.RELEASE_TAG }}"
 
-          # Check if tag exists
+          # Fetch all tags from remote
+          git fetch --tags
+
+          # Check if tag exists (local or remote)
           $tagExists = git tag -l $tag
 
           if (-not $tagExists) {
@@ -64,12 +67,11 @@ jobs:
 
       - name: Build and Publish
         run: |
-          dotnet publish FaraDeviceDriverChecker.Wpf/FaraDeviceDriverChecker.Wpf.csproj `
+          dotnet publish FaraDeviceDriverChecker/FaraDeviceDriverChecker.csproj `
             -c Release `
             -r win-x64 `
             --self-contained `
             -p:PublishSingleFile=true `
-            -p:AssemblyName=${{ env.APP_NAME }} `
             -o ./publish/win-x64
         shell: pwsh
 

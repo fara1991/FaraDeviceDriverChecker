@@ -76,7 +76,7 @@ Windowsのデバイスドライバーの状態を診断し、必要に応じてW
 ## プロジェクト構成
 
 ```
-FaraDeviceDriverChecker.Wpf/
+FaraDeviceDriverChecker/
 ├── Models/
 │   ├── DeviceInfo.cs        # デバイス情報モデル
 │   └── DeviceCategory.cs    # デバイスカテゴリ定義
@@ -112,7 +112,7 @@ dotnet restore
 dotnet build
 
 # リリースビルド (単一実行ファイル)
-dotnet publish FaraDeviceDriverChecker.Wpf/FaraDeviceDriverChecker.Wpf.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o ./publish
+dotnet publish FaraDeviceDriverChecker/FaraDeviceDriverChecker.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o ./publish
 ```
 
 ## サポート
