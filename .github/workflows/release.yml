@@ -1,24 +1,58 @@
-﻿name: Build and Release
+name: Build and Release
 
 on:
   push:
     tags:
       - 'v*.*.*'
-    branches:
-      - 'release/**'
-  workflow_dispatch:  # 手動実行を有効化
+  workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release'
+        description: 'Tag to release (e.g., v1.0.0)'
         required: true
         default: 'v1.0.0'
+
+env:
+  APP_NAME: FaraDeviceDriverChecker
+
 jobs:
   build-and-release:
     runs-on: windows-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set release tag
+        id: set_tag
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $tag = "${{ github.event.inputs.tag }}"
+          } else {
+            $tag = "${{ github.ref_name }}"
+          }
+          echo "RELEASE_TAG=$tag" >> $env:GITHUB_OUTPUT
+          echo "Release tag: $tag"
+        shell: pwsh
+
+      - name: Create tag if not exists (manual trigger only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          $tag = "${{ steps.set_tag.outputs.RELEASE_TAG }}"
+
+          # Check if tag exists
+          $tagExists = git tag -l $tag
+
+          if (-not $tagExists) {
+            Write-Host "Tag $tag does not exist. Creating..."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag $tag
+            git push origin $tag
+            Write-Host "Tag $tag created and pushed."
+          } else {
+            Write-Host "Tag $tag already exists."
+          }
+        shell: pwsh
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -30,34 +64,38 @@ jobs:
 
       - name: Build and Publish
         run: |
-          dotnet publish FaraDeviceDriverChecker.Wpf/FaraDeviceDriverChecker.Wpf.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o ./publish/win-x64
-
-      - name: List files (debugging)
-        run: |
-          Get-ChildItem -Path "./publish/win-x64/" -Recurse
+          dotnet publish FaraDeviceDriverChecker.Wpf/FaraDeviceDriverChecker.Wpf.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained `
+            -p:PublishSingleFile=true `
+            -p:AssemblyName=${{ env.APP_NAME }} `
+            -o ./publish/win-x64
         shell: pwsh
 
       - name: Create ZIP archive
         run: |
-          Compress-Archive -Path "./publish/win-x64/FaraDeviceDriverChecker.Wpf.exe", "README.md" -DestinationPath "./FaraDeviceDriverChecker-${{ github.ref_name }}-win-x64.zip"
+          $tag = "${{ steps.set_tag.outputs.RELEASE_TAG }}"
+          Compress-Archive -Path "./publish/win-x64/${{ env.APP_NAME }}.exe", "README.md" -DestinationPath "./${{ env.APP_NAME }}-$tag-win-x64.zip"
         shell: pwsh
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.set_tag.outputs.RELEASE_TAG }}
           files: |
-            ./FaraDeviceDriverChecker-${{ github.ref_name }}-win-x64.zip
+            ./${{ env.APP_NAME }}-${{ steps.set_tag.outputs.RELEASE_TAG }}-win-x64.zip
           body: |
-            ## FaraDeviceDriverChecker ${{ github.ref_name }}
-            
+            ## ${{ env.APP_NAME }} ${{ steps.set_tag.outputs.RELEASE_TAG }}
+
             Windowsのデバイスドライバー状態診断・更新支援ツール
-            
+
             ### ダウンロード
-            - **FaraDeviceDriverChecker-${{ github.ref_name }}-win-x64.zip**: Windows 64bit版
-            
+            - **${{ env.APP_NAME }}-${{ steps.set_tag.outputs.RELEASE_TAG }}-win-x64.zip**: Windows 64bit版
+
             ### 使用方法
             1. ZIPファイルをダウンロード・解凍
-            2. `FaraDeviceDriverChecker.Wpf.exe` を実行
+            2. `${{ env.APP_NAME }}.exe` を実行
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
