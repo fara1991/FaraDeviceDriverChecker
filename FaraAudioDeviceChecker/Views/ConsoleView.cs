@@ -45,19 +45,6 @@ public class ConsoleView
             needsAttention = true;
         }
 
-        if (!string.IsNullOrEmpty(device.DriverDate) && device.DriverDate != "不明")
-        {
-            if (DateTime.TryParse(device.DriverDate, out var driverDate))
-            {
-                var age = DateTime.Now - driverDate;
-                if (age.TotalDays > 365)
-                {
-                    issues.Add($"ドライバーが古い可能性があります（{age.TotalDays:F0}日前）");
-                    needsAttention = true;
-                }
-            }
-        }
-
         if (device.DriverVersion.StartsWith("取得エラー:"))
         {
             issues.Add("ドライバー情報が取得できませんでした");
@@ -108,6 +95,11 @@ public class ConsoleView
         }
     }
 
+    public static void ShowCheckingForUpdates()
+    {
+        Console.WriteLine("\n利用可能なドライバー更新を確認中...");
+    }
+
     public static void ShowDeviceStatistics(DeviceStatistics statistics)
     {
         Console.WriteLine("\n=== デバイス統計 ===");
@@ -131,11 +123,11 @@ public class ConsoleView
         }
     }
 
-    public static void ShowRecommendations(List<AudioDeviceInfo> problemDevices, List<AudioDeviceInfo> oldDriverDevices)
+    public static void ShowRecommendations(List<AudioDeviceInfo> problemDevices, List<string> availableUpdates)
     {
         Console.WriteLine("\n=== 推奨事項 ===");
 
-        if (problemDevices.Count == 0 && oldDriverDevices.Count == 0)
+        if (problemDevices.Count == 0 && availableUpdates.Count == 0)
         {
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("現在、特に対応が必要な問題は見つかりませんでした。");
@@ -157,15 +149,15 @@ public class ConsoleView
             Console.WriteLine();
         }
 
-        if (oldDriverDevices.Count > 0)
+        if (availableUpdates.Count > 0)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"🟡 更新推奨: {oldDriverDevices.Count}個のデバイスのドライバーが古い");
+            Console.WriteLine($"🟡 利用可能なドライバー更新: {availableUpdates.Count}件");
             Console.ResetColor();
-            Console.WriteLine("以下の方法で更新してください:");
-            Console.WriteLine("  1. Windows Update を実行");
-            Console.WriteLine("  2. 製造元の公式サイトから最新ドライバーをダウンロード");
-            Console.WriteLine("  3. デバイスマネージャーからドライバーを更新");
+            foreach (var update in availableUpdates)
+            {
+                Console.WriteLine($"  - {update}");
+            }
             Console.WriteLine();
         }
 
@@ -178,6 +170,69 @@ public class ConsoleView
     public static void ShowError(string message)
     {
         Console.WriteLine($"エラーが発生しました: {message}");
+    }
+
+    public static int ShowUpdateMenu()
+    {
+        Console.WriteLine("\n=== ドライバー更新オプション ===");
+        Console.WriteLine("1. Windows Updateでドライバーを検索・更新");
+        Console.WriteLine("2. Windows Updateの設定画面を開く（オプションの更新プログラム）");
+        Console.WriteLine("3. デバイススキャン（pnputil）");
+        Console.WriteLine("0. 何もしない");
+        Console.Write("\n選択してください (0-3): ");
+
+        var input = Console.ReadLine()?.Trim();
+        return int.TryParse(input, out var choice) ? choice : 0;
+    }
+
+    public static void ShowWindowsUpdateInProgress()
+    {
+        Console.WriteLine("\nWindows Updateを実行中...");
+        Console.WriteLine("※スキャン・ダウンロード・インストールが完了するまで待機します。");
+        Console.WriteLine("※数分〜数十分かかる場合があります。しばらくお待ちください...");
+    }
+
+    public static void ShowWindowsUpdateResult(bool success, string message)
+    {
+        Console.WriteLine();
+        if (success)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine(message);
+            Console.WriteLine("ドライバーが更新された場合、再起動が必要な場合があります。");
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(message);
+        }
+        Console.ResetColor();
+    }
+
+    public static void ShowOpeningSettings()
+    {
+        Console.WriteLine("\nWindows Updateの設定画面を開いています...");
+        Console.WriteLine("「オプションの更新プログラム」からドライバー更新を選択してください。");
+    }
+
+    public static void ShowDeviceScanInProgress()
+    {
+        Console.WriteLine("\nデバイススキャンを実行中...");
+    }
+
+    public static void ShowDeviceScanResult(bool success)
+    {
+        if (success)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("デバイススキャンが完了しました。");
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("デバイススキャンに失敗しました。管理者権限で実行してください。");
+        }
+        Console.ResetColor();
     }
 
     public static void ShowExitPrompt()

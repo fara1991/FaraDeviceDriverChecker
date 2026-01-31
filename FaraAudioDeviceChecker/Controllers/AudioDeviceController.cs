@@ -35,9 +35,35 @@ public class AudioDeviceController(IDeviceService deviceService)
             var statistics = deviceService.GetDeviceStatistics(audioDevices);
             ConsoleView.ShowDeviceStatistics(statistics);
 
+            // 利用可能なドライバー更新をチェック
+            ConsoleView.ShowCheckingForUpdates();
+            var availableUpdates = deviceService.GetAvailableDriverUpdates();
+
             // 推奨事項の表示
-            var oldDriverDevices = deviceService.GetOldDriverDevices(audioDevices);
-            ConsoleView.ShowRecommendations(problemDevices, oldDriverDevices);
+            ConsoleView.ShowRecommendations(problemDevices, availableUpdates);
+
+            // 問題のあるデバイスまたは利用可能な更新がある場合、更新を提案
+            if (problemDevices.Count > 0 || availableUpdates.Count > 0)
+            {
+                var choice = ConsoleView.ShowUpdateMenu();
+                switch (choice)
+                {
+                    case 1:
+                        ConsoleView.ShowWindowsUpdateInProgress();
+                        var (updateSuccess, updateMessage) = deviceService.RunWindowsUpdate();
+                        ConsoleView.ShowWindowsUpdateResult(updateSuccess, updateMessage);
+                        break;
+                    case 2:
+                        ConsoleView.ShowOpeningSettings();
+                        deviceService.OpenWindowsUpdateSettings();
+                        break;
+                    case 3:
+                        ConsoleView.ShowDeviceScanInProgress();
+                        var scanSuccess = deviceService.ScanAndUpdateDrivers();
+                        ConsoleView.ShowDeviceScanResult(scanSuccess);
+                        break;
+                }
+            }
         }
         catch (Exception ex)
         {

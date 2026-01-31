@@ -22,11 +22,7 @@ public static class WmiHelper
             return input;
 
         return input
-            .Replace("\\", @"\\") // バックスラッシュ
-            .Replace("'", "''") // シングルクォート
-            .Replace("\"", "\\\"") // ダブルクォート
-            .Replace("%", "[%]") // パーセント
-            .Replace("_", "[_]") // アンダースコア
-            .Replace("&", "^&"); // アンパサンド
+            .Replace("\\", "\\\\") // バックスラッシュ（WQLでは\\でエスケープ）
+            .Replace("'", "''"); // シングルクォート
     }
 }
