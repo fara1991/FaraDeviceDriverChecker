@@ -4,7 +4,7 @@ using Models;
 
 public interface IDeviceService
 {
-    List<AudioDeviceInfo> GetAudioDevices();
+    List<AudioDeviceInfo> GetDevices(string[] deviceClasses);
     DeviceStatistics GetDeviceStatistics(List<AudioDeviceInfo> devices);
     List<AudioDeviceInfo> GetProblemDevices(List<AudioDeviceInfo> devices);
     List<string> GetAvailableDriverUpdates();

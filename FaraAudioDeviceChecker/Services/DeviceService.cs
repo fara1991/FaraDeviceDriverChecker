@@ -7,39 +7,106 @@ using Utilities;
 
 public class DeviceService : IDeviceService
 {
-    private readonly string[] _audioClasses = ["Media", "AudioEndpoint", "SoftwareDevice"];
-
-    public List<AudioDeviceInfo> GetAudioDevices()
+    public List<AudioDeviceInfo> GetDevices(string[] deviceClasses)
     {
         var devices = new List<AudioDeviceInfo>();
 
-        var classConditions = string.Join(" OR ", _audioClasses.Select(c => $"PNPClass = '{c}'"));
-        var query = $"SELECT * FROM Win32_PnPEntity WHERE {classConditions} OR Name LIKE '%audio%' OR Name LIKE '%sound%'";
+        var deviceIds = GetDeviceIdsByClasses(deviceClasses);
 
-        using var searcher = new ManagementObjectSearcher(query);
-        var collection = searcher.Get();
-
-        foreach (var o in collection)
+        foreach (var deviceId in deviceIds)
         {
-            var device = (ManagementObject) o;
-            var deviceInfo = new AudioDeviceInfo
+            var deviceInfo = GetDeviceInfoById(deviceId);
+            if (deviceInfo != null)
             {
-                Name = WmiHelper.GetPropertyValue(device, "Name"),
-                DeviceId = WmiHelper.GetPropertyValue(device, "DeviceID"),
-                Description = WmiHelper.GetPropertyValue(device, "Description"),
-                Manufacturer = WmiHelper.GetPropertyValue(device, "Manufacturer"),
-                Status = WmiHelper.GetPropertyValue(device, "Status"),
-                Class = WmiHelper.GetPropertyValue(device, "PNPClass"),
-                Service = WmiHelper.GetPropertyValue(device, "Service"),
-                HardwareId = WmiHelper.GetPropertyValue(device, "HardwareID")
-            };
-
-            SetProblemCode(device, deviceInfo);
-            GetDriverInfo(deviceInfo);
-            devices.Add(deviceInfo);
+                devices.Add(deviceInfo);
+            }
         }
 
         return RemoveDuplicates(devices);
+    }
+
+    private List<string> GetDeviceIdsByClasses(string[] deviceClasses)
+    {
+        var deviceIds = new List<string>();
+
+        foreach (var deviceClass in deviceClasses)
+        {
+            try
+            {
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = "pnputil",
+                    Arguments = $"/enum-devices /class {deviceClass}",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(processInfo);
+                if (process == null) continue;
+
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+
+                // "インスタンス ID:" または "Instance ID:" の行からデバイスIDを抽出
+                var lines = output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+                foreach (var line in lines)
+                {
+                    if (line.Contains("インスタンス ID:") || line.Contains("Instance ID:"))
+                    {
+                        var id = line.Split(':').LastOrDefault()?.Trim();
+                        if (!string.IsNullOrEmpty(id))
+                        {
+                            deviceIds.Add(id);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // エラー時は継続
+            }
+        }
+
+        return deviceIds;
+    }
+
+    private AudioDeviceInfo? GetDeviceInfoById(string deviceId)
+    {
+        try
+        {
+            var escapedDeviceId = WmiHelper.EscapeWqlString(deviceId);
+            var query = $"SELECT * FROM Win32_PnPEntity WHERE DeviceID = '{escapedDeviceId}'";
+
+            using var searcher = new ManagementObjectSearcher(query);
+            var collection = searcher.Get();
+
+            foreach (var o in collection)
+            {
+                var device = (ManagementObject)o;
+                var deviceInfo = new AudioDeviceInfo
+                {
+                    Name = WmiHelper.GetPropertyValue(device, "Name"),
+                    DeviceId = WmiHelper.GetPropertyValue(device, "DeviceID"),
+                    Description = WmiHelper.GetPropertyValue(device, "Description"),
+                    Manufacturer = WmiHelper.GetPropertyValue(device, "Manufacturer"),
+                    Status = WmiHelper.GetPropertyValue(device, "Status"),
+                    Class = WmiHelper.GetPropertyValue(device, "PNPClass"),
+                    Service = WmiHelper.GetPropertyValue(device, "Service"),
+                    HardwareId = WmiHelper.GetPropertyValue(device, "HardwareID")
+                };
+
+                SetProblemCode(device, deviceInfo);
+                GetDriverInfo(deviceInfo);
+                return deviceInfo;
+            }
+        }
+        catch
+        {
+            // エラー時はnullを返す
+        }
+
+        return null;
     }
 
     public DeviceStatistics GetDeviceStatistics(List<AudioDeviceInfo> devices)

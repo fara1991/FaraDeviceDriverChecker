@@ -4,19 +4,55 @@ using Models;
 
 public class ConsoleView
 {
-    public static void ShowHeader()
+    public static readonly Dictionary<string, (string DisplayName, string[] Classes)> DeviceCategories = new()
     {
-        Console.WriteLine("=== Audioドライバー状態 ===\n");
+        ["1"] = ("オーディオ", ["Media", "AudioEndpoint"]),
+        ["2"] = ("ディスプレイ/グラフィック", ["Display"]),
+        ["3"] = ("ネットワーク", ["Net"]),
+        ["4"] = ("Bluetooth", ["Bluetooth"]),
+        ["5"] = ("USB", ["USB"]),
+        ["6"] = ("キーボード・マウス", ["Keyboard", "Mouse"]),
+        ["7"] = ("カメラ", ["Camera"]),
+        ["8"] = ("すべて", ["Media", "AudioEndpoint", "Display", "Net", "Bluetooth", "USB", "Keyboard", "Mouse", "Camera"])
+    };
+
+    public static (string[] classes, string categoryName) ShowDeviceCategoryMenu()
+    {
+        Console.WriteLine("=== デバイスドライバーチェッカー ===\n");
+        Console.WriteLine("チェックするデバイスの種類を選択してください:\n");
+
+        foreach (var category in DeviceCategories)
+        {
+            Console.WriteLine($"  {category.Key}. {category.Value.DisplayName}");
+        }
+
+        Console.Write("\n選択 (1-8): ");
+        var input = Console.ReadLine()?.Trim() ?? "1";
+
+        if (DeviceCategories.TryGetValue(input, out var selected))
+        {
+            Console.WriteLine($"\n{selected.DisplayName}デバイスをチェックします...\n");
+            return (selected.Classes, selected.DisplayName);
+        }
+
+        // デフォルトはオーディオ
+        Console.WriteLine("\nオーディオデバイスをチェックします...\n");
+        return (DeviceCategories["1"].Classes, DeviceCategories["1"].DisplayName);
     }
 
-    public static void ShowDeviceCount(int count)
+    public static void ShowHeader(string categoryName)
     {
-        Console.WriteLine($"検出されたAudioデバイス数: {count}\n");
+        Console.WriteLine($"=== {categoryName}ドライバー状態 ===\n");
     }
 
-    public static void ShowNoDevicesFound()
+    public static void ShowDeviceCount(int count, string categoryName)
     {
-        Console.WriteLine("Audioデバイスが見つかりませんでした。");
+        Console.WriteLine($"検出された{categoryName}デバイス数: {count}\n");
+    }
+
+    public static void ShowNoDevicesFound(string categoryName)
+    {
+        Console.WriteLine($"{categoryName}デバイスが見つかりませんでした。");
     }
 
     public static void ShowDeviceAnalysis(AudioDeviceInfo device)

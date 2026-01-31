@@ -9,30 +9,33 @@ public class AudioDeviceController(IDeviceService deviceService)
     {
         try
         {
-            ConsoleView.ShowHeader();
+            // デバイスカテゴリを選択
+            var (deviceClasses, categoryName) = ConsoleView.ShowDeviceCategoryMenu();
 
-            var audioDevices = deviceService.GetAudioDevices();
+            ConsoleView.ShowHeader(categoryName);
 
-            if (audioDevices.Count == 0)
+            var devices = deviceService.GetDevices(deviceClasses);
+
+            if (devices.Count == 0)
             {
-                ConsoleView.ShowNoDevicesFound();
+                ConsoleView.ShowNoDevicesFound(categoryName);
                 return;
             }
 
-            ConsoleView.ShowDeviceCount(audioDevices.Count);
+            ConsoleView.ShowDeviceCount(devices.Count, categoryName);
 
             // 各デバイスの分析を表示
-            foreach (var device in audioDevices)
+            foreach (var device in devices)
             {
                 ConsoleView.ShowDeviceAnalysis(device);
             }
 
             // 問題のあるデバイスの要約
-            var problemDevices = deviceService.GetProblemDevices(audioDevices);
+            var problemDevices = deviceService.GetProblemDevices(devices);
             ConsoleView.ShowProblemSummary(problemDevices);
 
             // 統計情報の表示
-            var statistics = deviceService.GetDeviceStatistics(audioDevices);
+            var statistics = deviceService.GetDeviceStatistics(devices);
             ConsoleView.ShowDeviceStatistics(statistics);
 
             // 利用可能なドライバー更新をチェック
